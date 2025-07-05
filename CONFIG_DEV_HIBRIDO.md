@@ -34,7 +34,7 @@ Implementei uma configuração **híbrida** que permite máxima flexibilidade pa
 
 ```bash
 # Opção 1: Script automatizado
-curl -fsSL https://raw.githubusercontent.com/seu-repo/bet/main/scripts/setup_vm.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Matheus-Souto/bet/main/scripts/setup_vm.sh | bash
 
 # Opção 2: Manual
 git clone <seu-repositorio> bet-vm
