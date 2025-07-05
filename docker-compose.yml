@@ -1,0 +1,108 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:15
+    container_name: bet_postgres
+    environment:
+      POSTGRES_USER: bet_user
+      POSTGRES_PASSWORD: bet_password
+      POSTGRES_DB: bet_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - '5432:5432'
+    networks:
+      - bet_network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: bet_redis
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    networks:
+      - bet_network
+
+  # Backend API
+  backend:
+    build: ./backend
+    container_name: bet_backend
+    depends_on:
+      - db
+      - redis
+    environment:
+      - DATABASE_URL=postgresql://bet_user:bet_password@db:5432/bet_db
+      - REDIS_URL=redis://redis:6379
+      - ENVIRONMENT=development
+      - DEBUG=true
+    ports:
+      - '8000:8000'
+    volumes:
+      - ./backend:/app
+    networks:
+      - bet_network
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Frontend (React)
+  frontend:
+    build: ./frontend
+    container_name: bet_frontend
+    depends_on:
+      - backend
+    ports:
+      - '3000:3000'
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - bet_network
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000/api/v1
+
+  # Celery Worker
+  worker:
+    build: ./backend
+    container_name: bet_worker
+    depends_on:
+      - db
+      - redis
+    environment:
+      - DATABASE_URL=postgresql://bet_user:bet_password@db:5432/bet_db
+      - REDIS_URL=redis://redis:6379
+      - CELERY_BROKER_URL=redis://redis:6379
+      - CELERY_RESULT_BACKEND=redis://redis:6379
+    volumes:
+      - ./backend:/app
+    networks:
+      - bet_network
+    command: celery -A app.worker worker --loglevel=info
+
+  # Celery Beat (Scheduler)
+  beat:
+    build: ./backend
+    container_name: bet_beat
+    depends_on:
+      - db
+      - redis
+    environment:
+      - DATABASE_URL=postgresql://bet_user:bet_password@db:5432/bet_db
+      - REDIS_URL=redis://redis:6379
+      - CELERY_BROKER_URL=redis://redis:6379
+      - CELERY_RESULT_BACKEND=redis://redis:6379
+    volumes:
+      - ./backend:/app
+    networks:
+      - bet_network
+    command: celery -A app.worker beat --loglevel=info
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  bet_network:
+    driver: bridge

@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:15
+    container_name: bet_postgres
+    environment:
+      POSTGRES_USER: bet_user
+      POSTGRES_PASSWORD: bet_password
+      POSTGRES_DB: bet_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - '5432:5432'
+    networks:
+      - bet_network
+    restart: unless-stopped
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: bet_redis
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    networks:
+      - bet_network
+    restart: unless-stopped
+
+  # PgAdmin (Opcional - para gerenciar o banco visualmente)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: bet_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@bet.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+    ports:
+      - '8080:80'
+    networks:
+      - bet_network
+    restart: unless-stopped
+    depends_on:
+      - db
+
+  # Redis Commander (Opcional - para gerenciar Redis visualmente)
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: bet_redis_commander
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    ports:
+      - '8081:8081'
+    networks:
+      - bet_network
+    restart: unless-stopped
+    depends_on:
+      - redis
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  bet_network:
+    driver: bridge
